@@ -65,7 +65,8 @@ public class Robot extends TimedRobot {
   private final PWMVictorSPX cpSpinMotor = new PWMVictorSPX(2);
   private final PWMVictorSPX cpLiftMotor = new PWMVictorSPX(3);
 
-  private final PWMVictorSPX intakeMotor = new PWMVictorSPX(4);
+  private final PWMVictorSPX intakeMotor1 = new PWMVictorSPX(4);
+  private final PWMVictorSPX intakeMotor2 = new PWMVictorSPX(5);
 
   //Driving Objects
   private DifferentialDrive robotDrive = null;
@@ -117,7 +118,6 @@ public class Robot extends TimedRobot {
     test = 0;
     autoTimer.reset();
     autoTimer.start();
-
   }
 
   @Override
@@ -226,7 +226,8 @@ public class Robot extends TimedRobot {
     double manipRightStickX = manipController.getX(Hand.kRight);
 
     //TODO: ADJUST FOR SENSITIVITY
-    intakeMotor.set(manipRightStickX/2);
+    intakeMotor1.set(manipRightStickX/2);
+    intakeMotor2.set(-manipRightStickX/2);
 
     /* Intake Lift */
 
