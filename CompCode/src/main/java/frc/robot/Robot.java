@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PWM;
 import edu.wpi.first.wpilibj.PWMVictorSPX;
+import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
@@ -19,7 +20,6 @@ import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import sun.awt.image.XbmImageDecoder;
 
 
 /*
@@ -59,21 +59,24 @@ public class Robot extends TimedRobot {
   private Timer autoTimer;
 
   //Motor Controllers
-  private final PWMVictorSPX rightMotor = new PWMVictorSPX(0);
-  private final PWMVictorSPX leftMotor = new PWMVictorSPX(1);
+  private final PWMVictorSPX rightMotor = new PWMVictorSPX(1);
+  private final PWMVictorSPX leftMotor = new PWMVictorSPX(0);
 
-  private final PWMVictorSPX cpSpinMotor = new PWMVictorSPX(2);
-  private final PWMVictorSPX cpLiftMotor = new PWMVictorSPX(3);
+  private final PWMVictorSPX cpSpinMotor = new PWMVictorSPX(3);
+  private final PWMVictorSPX cpLiftMotor = new PWMVictorSPX(2);
 
   private final PWMVictorSPX intakeMotor1 = new PWMVictorSPX(4);
   private final PWMVictorSPX intakeMotor2 = new PWMVictorSPX(5);
+
+  private final Servo leftActuator = new Servo(6);
+  private final Servo rightActuator = new Servo(7);
 
   //Driving Objects
   private DifferentialDrive robotDrive = null;
 
   //CP Limit Switches
-  private DigitalInput highLimit = new DigitalInput(5);
-  private DigitalInput lowLimit = new DigitalInput(6);
+  private DigitalInput highLimit = new DigitalInput(8);
+  private DigitalInput lowLimit = new DigitalInput(9);
 
   //Controllers
   private final XboxController drivController = new XboxController(0);
@@ -95,6 +98,14 @@ public class Robot extends TimedRobot {
   private NetworkTableEntry autoEntry;
   private SendableChooser<String> colorChoice = new SendableChooser<String>();
 
+  private boolean intakeLiftToggle;
+
+  @Override
+  public void startCompetition() {
+    super.startCompetition();
+    
+  }
+
   @Override
   public void robotInit() {
     camera.startAutomaticCapture();
@@ -111,6 +122,8 @@ public class Robot extends TimedRobot {
     judas.add("Target Color", colorChoice).withWidget(BuiltInWidgets.kComboBoxChooser);
     //This is for the dropdown menu where the colorChoice is being a dropdown for each option and add option adds for each one.
     
+    leftActuator.setBounds(2.0, 1.8, 1.5, 1.2, 1.0);
+    rightActuator.setBounds(2.0, 1.8, 1.5, 1.2, 1.0);
   }
   
   @Override
@@ -122,10 +135,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void autonomousPeriodic() {
-    while(autoTimer.get() <= 2.0){
+    // while(autoTimer.get() <= 2.0){
       drive(0.2);
-    }
-    stop();
+    // }
+    // stop();
   }
 
   private void stop(){
@@ -184,7 +197,7 @@ public class Robot extends TimedRobot {
       Drive Controls
     */
     //TODO: MIGHT NEED TO ADJUST FOR SENSITIVITY
-    robotDrive.arcadeDrive(drivController.getY(GenericHID.Hand.kRight), drivController.getX(GenericHID.Hand.kRight));
+    robotDrive.arcadeDrive(drivController.getY(GenericHID.Hand.kRight)*0.9, drivController.getX(GenericHID.Hand.kRight)/2*0.9);
 
 
     /*
@@ -195,43 +208,45 @@ public class Robot extends TimedRobot {
     double manipRightTrigger = manipController.getTriggerAxis(GenericHID.Hand.kRight);
     double manipLeftTrigger = manipController.getTriggerAxis(GenericHID.Hand.kLeft);
 
-    System.out.println("Right Trigger: " + manipRightTrigger);
-    System.out.println("Left Trigger : " + manipLeftTrigger);
-
-    //TODO: MIGHT NEED TO CHANGE VALUES DEPENDING ON WHAT THE CONTROLLER GIVES
     if(manipRightTrigger > 0){
-      //TODO: ADJUST DIVISION FOR SENSITIVITY
-      cpSpinMotor.set(manipRightTrigger/2);
+      cpSpinMotor.set(manipRightTrigger);
     } else {
-      //TODO: ADJUST DIVISION FOR SENSITIVITY
-      cpSpinMotor.set(manipLeftTrigger/2);
+      cpSpinMotor.set(-manipLeftTrigger);
     }
 
     /* CP Lift */
     
-    double manipLeftStickY = manipController.getY(GenericHID.Hand.kLeft);
-
-    //TODO: ADJUST DIVISION FOR SENSITIVITY
-    if(manipLeftStickY > 0 && !highLimit.get()){
-      cpLiftMotor.set(manipLeftStickY/4);
-    } else if(manipLeftStickY > 0 && !lowLimit.get()){
-      cpLiftMotor.set(manipLeftStickY/4);
-    }
+    double manipLeftStickY = manipController.getY(GenericHID.Hand.kRight);
+    cpLiftMotor.set(-manipLeftStickY/4);
 
     /*
       Intake Controls
     */
 
     /* Intake */
-    double manipRightStickX = manipController.getX(Hand.kRight);
 
-    //TODO: ADJUST FOR SENSITIVITY
-    intakeMotor1.set(manipRightStickX/2);
-    intakeMotor2.set(-manipRightStickX/2);
+    boolean manipYButton = manipController.getYButton();
+    boolean manipAButton = manipController.getAButton();
+    if(manipAButton){
+      intakeMotor1.set(1*0.5);
+      intakeMotor2.set(1*0.5);
+    } else if(manipYButton){
+      intakeMotor1.set(-1*0.5);
+      intakeMotor2.set(-1*0.5);
+    } else {
+      intakeMotor1.set(0);
+      intakeMotor2.set(0);
+    }
 
     /* Intake Lift */
-
-    //TODO ?
+    if(manipController.getBumperPressed(Hand.kRight)){
+      intakeLiftToggle = !intakeLiftToggle;
+      rightActuator.set(1);
+      leftActuator.set(1);
+    } else if(manipController.getBumperPressed(Hand.kLeft)) {
+      rightActuator.set(0);
+      leftActuator.set(0);
+    }
 
     /*
       LEDS
@@ -246,11 +261,11 @@ public class Robot extends TimedRobot {
     
         //Send state of left motor to arduino
         if(leftMotorPower > 0){ //Left Motor Forward
-          System.out.println("Left Forward");
+          // System.out.println("Left Forward");
           leftDriveForward.set(true);
           leftDriveBackward.set(false);
         } else if (leftMotorPower < 0){ //Left Motor Backward
-          System.out.println("Left Backward");
+          // System.out.println("Left Backward");
           leftDriveForward.set(false);
           leftDriveBackward.set(true);
         } else { //Left Motor Stop
@@ -260,11 +275,11 @@ public class Robot extends TimedRobot {
     
         //Send state or right motor to arduino
         if(rightMotorPower < 0){ //Right Motor Forward
-          System.out.println("Right Forward");
+          // System.out.println("Right Forward");
           rightDriveForward.set(true);
           rightDriveBackward.set(false);
         } else if (rightMotorPower > 0){ //Right Motor Backward
-          System.out.println("Right Backward");
+          // System.out.println("Right Backward");
           rightDriveForward.set(false);
           rightDriveBackward.set(true);
         } else { //Right Motor Stop
